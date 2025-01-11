@@ -23,11 +23,11 @@ jobs:
     - name: Test
       run: go test -v -coverprofile=coverage.out ./...
 
-    - name: Test Coverage
-      run: go tool cover -func=coverage.out
+    - name: Generate HTML Coverage Report
+      run: go tool cover -html=coverage.out -o coverage.html
 
     - name: Upload Coverage Report
       uses: actions/upload-artifact@v3
       with:
         name: coverage-report
-        path: coverage.out
+        path: coverage.html
