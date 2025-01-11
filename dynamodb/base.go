@@ -2,11 +2,14 @@ package dynamodb
 
 import (
 	"errors"
-	"go_aws_services/session"
+	custom_session "go_aws_services/session"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
+
+var newSession = custom_session.GetAWSSession
+var newDynamodb = dynamodb.New
 
 type DynamoDBService interface {
 	PutItem(item map[string]*dynamodb.AttributeValue) (*dynamodb.PutItemOutput, error)
@@ -20,12 +23,13 @@ type DynamoDBService interface {
 }
 
 func NewDynamoDBClient(tableName string, keySchemaInput KeySchemaInput, gsiKeySchemaInput []*GsiKeySchemaInput) *DynamoDBClient {
-	sess := session.GetAWSSession()
+	session := newSession()
+	client := newDynamodb(session)
 	return &DynamoDBClient{
-		client:       dynamodb.New(sess),
 		tableName:    tableName,
 		keySchema:    keySchemaInput,
 		gsiKeySchema: gsiKeySchemaInput,
+		client:       client,
 	}
 }
 

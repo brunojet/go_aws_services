@@ -13,9 +13,11 @@ var (
 	once sync.Once
 )
 
+var newSession = session.NewSession // função auxiliar para criar a sessão
+
 func initAWSSession() {
 	var err error
-	sess, err = session.NewSession(&aws.Config{
+	sess, err = newSession(&aws.Config{
 		Region: aws.String("us-east-1"),
 	})
 	if err != nil {
