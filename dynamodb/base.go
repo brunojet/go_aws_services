@@ -11,11 +11,12 @@ import (
 var newSession = custom_session.GetAWSSession
 var newDynamodb = dynamodb.New
 
+var _ DynamoDBService = (*DynamoDBClient)(nil)
+
 type DynamoDBService interface {
-	PutItem(item map[string]*dynamodb.AttributeValue) (*dynamodb.PutItemOutput, error)
+	PutItem(item map[string]interface{}) (*dynamodb.PutItemOutput, error)
 	QueryItem(key map[string]interface{}, indexName string) (*dynamodb.QueryOutput, error)
-	GetItem(key map[string]*dynamodb.AttributeValue) (*dynamodb.GetItemOutput, error)
-	DeleteItem(key map[string]*dynamodb.AttributeValue) (*dynamodb.DeleteItemOutput, error)
+	GetItem(key map[string]interface{}) (*dynamodb.GetItemOutput, error)
 	CreateTableAsync() (*dynamodb.CreateTableOutput, error)
 	CreateTable() (*dynamodb.CreateTableOutput, error)
 	DeleteTableAsync() (*dynamodb.DeleteTableOutput, error)
