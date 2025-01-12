@@ -64,7 +64,6 @@ func mockNewDynamoDBClient(tableName string, keySchemaInput KeySchemaInput, gsiK
 	mockClient := new(mockDynamoDBClient)
 
 	dynamoClient = mockClient
-	isInitiated = true
 
 	dynamoDbClient, err := NewDynamoDBClient(tableName, keySchemaInput, gsiKeySchemaInput)
 

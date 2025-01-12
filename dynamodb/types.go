@@ -1,11 +1,15 @@
 package dynamodb
 
-import "github.com/aws/aws-sdk-go/service/dynamodb"
+import (
+	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
+)
 
 type DynamoDBClient struct {
 	tableName    string
 	keySchema    KeySchemaInput
 	gsiKeySchema []*GsiKeySchemaInput
+	client       dynamodbiface.DynamoDBAPI
 }
 
 type KeySchemaInput struct {

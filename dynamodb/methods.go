@@ -23,11 +23,11 @@ func NewDynamoDBClient(tableName string, keySchemaInput KeySchemaInput, gsiKeySc
 		return nil, err
 	}
 
-	initAwsDynamoDb()
 	return &DynamoDBClient{
 		tableName:    tableName,
 		keySchema:    keySchemaInput,
 		gsiKeySchema: gsiKeySchemaInput,
+		client:       initAwsDynamoDb(),
 	}, nil
 }
 
@@ -53,7 +53,7 @@ func (d *DynamoDBClient) CreateTableAsync() (*dynamodb.CreateTableOutput, error)
 		input.GlobalSecondaryIndexes = globalSecondaryIndexes
 	}
 
-	return dynamoClient.CreateTable(input)
+	return d.client.CreateTable(input)
 }
 
 func (d *DynamoDBClient) CreateTable() (*dynamodb.CreateTableOutput, error) {
@@ -78,7 +78,7 @@ func (d *DynamoDBClient) DeleteTableAsync() (*dynamodb.DeleteTableOutput, error)
 		TableName: aws.String(d.tableName),
 	}
 
-	return dynamoClient.DeleteTable(input)
+	return d.client.DeleteTable(input)
 }
 
 func (d *DynamoDBClient) DeleteTable() (*dynamodb.DeleteTableOutput, error) {
@@ -119,7 +119,7 @@ func (d *DynamoDBClient) PutItem(item map[string]interface{}) (*dynamodb.PutItem
 		TableName: aws.String(d.tableName),
 		Item:      av,
 	}
-	return dynamoClient.PutItem(input)
+	return d.client.PutItem(input)
 }
 
 // QueryItem queries items from the DynamoDB table using a secondary index.
@@ -147,7 +147,7 @@ func (d *DynamoDBClient) QueryItem(key map[string]interface{}, indexName string)
 		ExpressionAttributeValues: expressionAttributeValues,
 	}
 
-	return dynamoClient.Query(input)
+	return d.client.Query(input)
 }
 
 // GetItem retrieves an item from the DynamoDB table.
@@ -171,7 +171,7 @@ func (d *DynamoDBClient) GetItem(key map[string]interface{}) (*dynamodb.GetItemO
 		TableName: aws.String(d.tableName),
 		Key:       av,
 	}
-	return dynamoClient.GetItem(input)
+	return d.client.GetItem(input)
 }
 
 // DeleteItem deletes an item from the DynamoDB table.
@@ -195,5 +195,5 @@ func (d *DynamoDBClient) DeleteItem(key map[string]interface{}) (*dynamodb.Delet
 		TableName: aws.String(d.tableName),
 		Key:       av,
 	}
-	return dynamoClient.DeleteItem(input)
+	return d.client.DeleteItem(input)
 }
