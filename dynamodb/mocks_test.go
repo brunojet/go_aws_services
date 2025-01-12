@@ -3,23 +3,37 @@ package dynamodb
 import (
 	"testing"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/client"
+	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
 
+type mockCustomSession struct {
+	mock.Mock
+}
+
+type mockDynamoDB struct {
+	mock.Mock
+}
+
 type mockDynamoDBClient struct {
 	dynamodbiface.DynamoDBAPI
 	mock.Mock
 }
 
-func (m *mockDynamoDBClient) New(p client.ConfigProvider) *dynamodb.DynamoDB {
-	args := m.Called(p)
-	return args.Get(0).(*dynamodb.DynamoDB)
+func (m *mockCustomSession) GetAWSSession() *session.Session {
+	args := m.Called()
+	return args.Get(0).(*session.Session)
 }
 
+func (m *mockDynamoDB) New(p client.ConfigProvider, cfgs ...*aws.Config) *dynamodb.DynamoDB {
+	args := m.Called(p, cfgs)
+	return args.Get(0).(*dynamodb.DynamoDB)
+}
 func (m *mockDynamoDBClient) CreateTable(input *dynamodb.CreateTableInput) (*dynamodb.CreateTableOutput, error) {
 	args := m.Called(input)
 	return args.Get(0).(*dynamodb.CreateTableOutput), args.Error(1)

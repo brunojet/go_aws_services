@@ -1,27 +1,26 @@
 package dynamodb
 
 import (
+	"errors"
 	"go_aws_services/session"
-	"sync"
 
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
 var (
-	dynamoClient dynamodbiface.DynamoDBAPI = nil
-	once         sync.Once
+	getAwsSession                           = session.GetAWSSession
+	newDynamodb                             = dynamodb.New
+	dynamoClient  dynamodbiface.DynamoDBAPI = nil
 )
 
 func initAwsDynamoDb() dynamodbiface.DynamoDBAPI {
-	once.Do(func() {
+	if dynamoClient == nil {
+		dynamoClient = newDynamodb(getAwsSession())
 		if dynamoClient == nil {
-			dynamoClient = dynamodb.New(session.GetAWSSession())
+			panic(errors.New("failed to create dynamodb"))
 		}
-		if dynamoClient == nil {
-			panic("failed to create dynamodb")
-		}
-	})
+	}
 
 	return dynamoClient
 }
