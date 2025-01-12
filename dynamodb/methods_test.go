@@ -46,7 +46,7 @@ func TestTableWithRangeKey(t *testing.T) {
 
 func TestTableWithRangeKeyTyped(t *testing.T) {
 	tableName := "test-table-range-numeric"
-	keySchemaInput := KeySchemaInput{HashKey: "id", RangeKey: "range", RangeType: "N", ReadCapacityUnits: 1, WriteCapacityUnits: 1}
+	keySchemaInput := KeySchemaInput{HashKey: "id", RangeKey: "range", RangeType: AttrValInteger, ReadCapacityUnits: 1, WriteCapacityUnits: 1}
 	mockTable(t, tableName, keySchemaInput, nil)
 }
 

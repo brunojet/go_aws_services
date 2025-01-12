@@ -7,25 +7,28 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 )
 
-func convertKeySchema(input KeySchemaInput, attributeDefinitions *[]*dynamodb.AttributeDefinition, attributeMap map[string]bool) []*dynamodb.KeySchemaElement {
-	if input.HashKey == "" {
-		panic(errors.New("HASH key is required"))
+func generateKeySchema(key string, keyType string) []*dynamodb.KeySchemaElement {
+	if key == "" {
+		panic(errors.New("key is required"))
 	}
 
 	keySchema := []*dynamodb.KeySchemaElement{
 		{
-			AttributeName: aws.String(input.HashKey),
-			KeyType:       aws.String("HASH"),
+			AttributeName: aws.String(key),
+			KeyType:       aws.String(keyType),
 		},
 	}
+	return keySchema
+}
 
-	addAttributeDefinition(attributeDefinitions, attributeMap, input.HashKey, "S")
+func convertKeySchema(input KeySchemaInput, attributeDefinitions *[]*dynamodb.AttributeDefinition, attributeMap map[string]bool) []*dynamodb.KeySchemaElement {
+	keySchema := generateKeySchema(input.HashKey, HashKeyType)
+
+	addAttributeDefinition(attributeDefinitions, attributeMap, input.HashKey, AttrValString)
 
 	if input.RangeKey != "" {
-		keySchema = append(keySchema, &dynamodb.KeySchemaElement{
-			AttributeName: aws.String(input.RangeKey),
-			KeyType:       aws.String("RANGE"),
-		})
+		rangeSchema := generateKeySchema(input.RangeKey, RangeKeyType)
+		keySchema = append(keySchema, rangeSchema...)
 
 		addAttributeDefinition(attributeDefinitions, attributeMap, input.RangeKey, input.RangeType)
 	}
@@ -38,7 +41,7 @@ func addProjection(gsi *dynamodb.GlobalSecondaryIndex, projectionType string, no
 		ProjectionType: aws.String(projectionType),
 	}
 
-	if projectionType == "INCLUDE" {
+	if projectionType == ProjectionTypeInclude {
 		projection.NonKeyAttributes = aws.StringSlice(nonKeyAttributes)
 	}
 
@@ -84,7 +87,7 @@ func addAttributeDefinition(attributeDefinitions *[]*dynamodb.AttributeDefinitio
 	attributeMap[attributeName] = true
 
 	if attributeType == "" {
-		attributeType = "S"
+		attributeType = AttrValString
 	}
 
 	*attributeDefinitions = append(*attributeDefinitions, &dynamodb.AttributeDefinition{
@@ -102,29 +105,30 @@ func findGsiKeySchema(gsiKeySchema []*GsiKeySchemaInput, indexName string) *GsiK
 	panic(errors.New("GSI index not found"))
 }
 
+func addConditionExpression(expressionAttributeNames map[string]*string, expressionAttributeValues map[string]*dynamodb.AttributeValue, conditionExpression *string, key string, value string) {
+	expressionAttributeNames["#"+key] = aws.String(key)
+	expressionAttributeValues[":"+key] = &dynamodb.AttributeValue{
+		S: aws.String(value),
+	}
+
+	if *conditionExpression != "" {
+		*conditionExpression += " AND "
+	}
+	*conditionExpression += "#" + key + " = :" + key
+}
+
 func buildKeyConditionExpression(gsiKeySchema *GsiKeySchemaInput, key map[string]interface{}) (string, map[string]*string, map[string]*dynamodb.AttributeValue) {
 	expressionAttributeNames := make(map[string]*string)
 	expressionAttributeValues := make(map[string]*dynamodb.AttributeValue)
-
 	keyConditionExpression := ""
 
-	if gsiKeySchema.HashKey != "" {
-		expressionAttributeNames["#hk"] = aws.String(gsiKeySchema.HashKey)
-		expressionAttributeValues[":hk"] = &dynamodb.AttributeValue{
-			S: aws.String(key[gsiKeySchema.HashKey].(string)),
+	for k, v := range key {
+		switch k {
+		case gsiKeySchema.HashKey:
+			fallthrough
+		case gsiKeySchema.RangeKey:
+			addConditionExpression(expressionAttributeNames, expressionAttributeValues, &keyConditionExpression, k, v.(string))
 		}
-		keyConditionExpression = "#hk = :hk"
-	}
-
-	if gsiKeySchema.RangeKey != "" {
-		expressionAttributeNames["#rk"] = aws.String(gsiKeySchema.RangeKey)
-		expressionAttributeValues[":rk"] = &dynamodb.AttributeValue{
-			S: aws.String(key[gsiKeySchema.RangeKey].(string)),
-		}
-		if keyConditionExpression != "" {
-			keyConditionExpression += " AND "
-		}
-		keyConditionExpression += "#rk = :rk"
 	}
 
 	return keyConditionExpression, expressionAttributeNames, expressionAttributeValues

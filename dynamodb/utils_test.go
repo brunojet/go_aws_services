@@ -21,15 +21,15 @@ func TestConvertKeySchema(t *testing.T) {
 
 		assert.Equal(t, 2, len(keySchema))
 		assert.Equal(t, "id", *keySchema[0].AttributeName)
-		assert.Equal(t, "HASH", *keySchema[0].KeyType)
+		assert.Equal(t, HashKeyType, *keySchema[0].KeyType)
 		assert.Equal(t, "range", *keySchema[1].AttributeName)
-		assert.Equal(t, "RANGE", *keySchema[1].KeyType)
+		assert.Equal(t, RangeKeyType, *keySchema[1].KeyType)
 
 		assert.Equal(t, 2, len(attributeDefinitions))
 		assert.Equal(t, "id", *attributeDefinitions[0].AttributeName)
-		assert.Equal(t, "S", *attributeDefinitions[0].AttributeType)
+		assert.Equal(t, AttrValString, *attributeDefinitions[0].AttributeType)
 		assert.Equal(t, "range", *attributeDefinitions[1].AttributeName)
-		assert.Equal(t, "S", *attributeDefinitions[1].AttributeType)
+		assert.Equal(t, AttrValString, *attributeDefinitions[1].AttributeType)
 	})
 
 	t.Run("Valid key schema with only hash", func(t *testing.T) {
@@ -43,11 +43,11 @@ func TestConvertKeySchema(t *testing.T) {
 
 		assert.Equal(t, 1, len(keySchema))
 		assert.Equal(t, "id", *keySchema[0].AttributeName)
-		assert.Equal(t, "HASH", *keySchema[0].KeyType)
+		assert.Equal(t, HashKeyType, *keySchema[0].KeyType)
 
 		assert.Equal(t, 1, len(attributeDefinitions))
 		assert.Equal(t, "id", *attributeDefinitions[0].AttributeName)
-		assert.Equal(t, "S", *attributeDefinitions[0].AttributeType)
+		assert.Equal(t, AttrValString, *attributeDefinitions[0].AttributeType)
 	})
 
 	t.Run("Panic on missing hash key", func(t *testing.T) {
@@ -55,7 +55,7 @@ func TestConvertKeySchema(t *testing.T) {
 		var attributeDefinitions []*dynamodb.AttributeDefinition
 		attributeMap := make(map[string]bool)
 
-		assert.PanicsWithError(t, "HASH key is required", func() {
+		assert.PanicsWithError(t, "key is required", func() {
 			convertKeySchema(input, &attributeDefinitions, attributeMap)
 		})
 	})
@@ -88,9 +88,9 @@ func TestConvertGSI(t *testing.T) {
 
 		assert.Equal(t, 2, len(attributeDefinitions))
 		assert.Equal(t, "field1", *attributeDefinitions[0].AttributeName)
-		assert.Equal(t, "S", *attributeDefinitions[0].AttributeType)
+		assert.Equal(t, AttrValString, *attributeDefinitions[0].AttributeType)
 		assert.Equal(t, "field2", *attributeDefinitions[1].AttributeName)
-		assert.Equal(t, "S", *attributeDefinitions[1].AttributeType)
+		assert.Equal(t, AttrValString, *attributeDefinitions[1].AttributeType)
 	})
 }
 
@@ -99,11 +99,11 @@ func TestAddAttributeDefinition(t *testing.T) {
 		var attributeDefinitions []*dynamodb.AttributeDefinition
 		attributeMap := make(map[string]bool)
 
-		addAttributeDefinition(&attributeDefinitions, attributeMap, "id", "S")
+		addAttributeDefinition(&attributeDefinitions, attributeMap, "id", AttrValString)
 
 		assert.Equal(t, 1, len(attributeDefinitions))
 		assert.Equal(t, "id", *attributeDefinitions[0].AttributeName)
-		assert.Equal(t, "S", *attributeDefinitions[0].AttributeType)
+		assert.Equal(t, AttrValString, *attributeDefinitions[0].AttributeType)
 		assert.True(t, attributeMap["id"])
 	})
 
@@ -112,7 +112,7 @@ func TestAddAttributeDefinition(t *testing.T) {
 		attributeMap := make(map[string]bool)
 		attributeMap["id"] = true
 
-		addAttributeDefinition(&attributeDefinitions, attributeMap, "id", "S")
+		addAttributeDefinition(&attributeDefinitions, attributeMap, "id", AttrValString)
 
 		assert.Equal(t, 0, len(attributeDefinitions))
 	})
@@ -163,14 +163,16 @@ func TestBuildKeyConditionExpression(t *testing.T) {
 			"range": "456",
 		}
 		expression, names, values := buildKeyConditionExpression(gsiKeySchema, key)
-		assert.Equal(t, "#hk = :hk AND #rk = :rk", expression)
+		assert.Contains(t, expression, "#id = :id")
+		assert.Contains(t, expression, "#range = :range")
+		assert.Contains(t, expression, " AND ")
 		assert.Equal(t, map[string]*string{
-			"#hk": aws.String("id"),
-			"#rk": aws.String("range"),
+			"#id":    aws.String("id"),
+			"#range": aws.String("range"),
 		}, names)
 		assert.Equal(t, map[string]*dynamodb.AttributeValue{
-			":hk": {S: aws.String("123")},
-			":rk": {S: aws.String("456")},
+			":id":    {S: aws.String("123")},
+			":range": {S: aws.String("456")},
 		}, values)
 	})
 
@@ -180,12 +182,12 @@ func TestBuildKeyConditionExpression(t *testing.T) {
 			"id": "123",
 		}
 		expression, names, values := buildKeyConditionExpression(gsiKeySchema, key)
-		assert.Equal(t, "#hk = :hk", expression)
+		assert.Equal(t, "#id = :id", expression)
 		assert.Equal(t, map[string]*string{
-			"#hk": aws.String("id"),
+			"#id": aws.String("id"),
 		}, names)
 		assert.Equal(t, map[string]*dynamodb.AttributeValue{
-			":hk": {S: aws.String("123")},
+			":id": {S: aws.String("123")},
 		}, values)
 	})
 
@@ -196,12 +198,12 @@ func TestBuildKeyConditionExpression(t *testing.T) {
 			"range": "456",
 		}
 		expression, names, values := buildKeyConditionExpression(gsiKeySchema, key)
-		assert.Equal(t, "#rk = :rk", expression)
+		assert.Equal(t, "#range = :range", expression)
 		assert.Equal(t, map[string]*string{
-			"#rk": aws.String("range"),
+			"#range": aws.String("range"),
 		}, names)
 		assert.Equal(t, map[string]*dynamodb.AttributeValue{
-			":rk": {S: aws.String("456")},
+			":range": {S: aws.String("456")},
 		}, values)
 	})
 }

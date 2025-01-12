@@ -10,30 +10,6 @@ import (
 
 var _ DynamoDBService = (*DynamoDBClient)(nil)
 
-func validateSchemaIntegrity(keySchemaInput KeySchemaInput) error {
-	if keySchemaInput.HashKey == "" {
-		return errors.New("hash key cannot be empty")
-	}
-
-	return nil
-}
-
-func validateGsiSchemaIntegrity(gsiKeySchemaInput []*GsiKeySchemaInput) error {
-	for _, gsi := range gsiKeySchemaInput {
-		if err := validateSchemaIntegrity(gsi.KeySchemaInput); err != nil {
-			return err
-		}
-		if gsi.IndexName == "" {
-			return errors.New("GSI index name cannot be empty")
-		}
-		if gsi.ProjectionType != "ALL" && gsi.ProjectionType != "INCLUDE" && gsi.ProjectionType != "KEYS_ONLY" {
-			return errors.New("GSI projection type must be one of ALL, INCLUDE, or KEYS_ONLY")
-		}
-	}
-
-	return nil
-}
-
 func NewDynamoDBClient(tableName string, keySchemaInput KeySchemaInput, gsiKeySchemaInput []*GsiKeySchemaInput) (*DynamoDBClient, error) {
 	if tableName == "" {
 		return nil, errors.New("table name cannot be empty")
@@ -61,10 +37,7 @@ func (d *DynamoDBClient) CreateTableAsync() (*dynamodb.CreateTableOutput, error)
 
 	keySchema := convertKeySchema(d.keySchema, &attributeDefinitions, attributeMap)
 
-	var globalSecondaryIndexes []*dynamodb.GlobalSecondaryIndex
-	if d.gsiKeySchema != nil {
-		globalSecondaryIndexes = convertGSI(d.gsiKeySchema, &attributeDefinitions, attributeMap)
-	}
+	globalSecondaryIndexes := convertGSI(d.gsiKeySchema, &attributeDefinitions, attributeMap)
 
 	input := &dynamodb.CreateTableInput{
 		TableName:            aws.String(d.tableName),

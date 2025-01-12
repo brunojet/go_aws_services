@@ -23,6 +23,16 @@ type GsiKeySchemaInput struct {
 	NonKeyAttributes []string `json:"NonKeyAttributes,omitempty"`
 }
 
+const (
+	HashKeyType            = "HASH"
+	RangeKeyType           = "RANGE"
+	AttrValString          = "S"
+	AttrValInteger         = "N"
+	ProjectionTypeAll      = "ALL"
+	ProjectionTypeKeysOnly = "KEYS_ONLY"
+	ProjectionTypeInclude  = "INCLUDE"
+)
+
 type DynamoDBService interface {
 	PutItem(item map[string]interface{}) (*dynamodb.PutItemOutput, error)
 	QueryItem(key map[string]interface{}, indexName string) (*dynamodb.QueryOutput, error)
