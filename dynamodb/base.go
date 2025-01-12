@@ -2,16 +2,29 @@ package dynamodb
 
 import (
 	"errors"
-	custom_session "go_aws_services/session"
+	"go_aws_services/session"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
+	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbiface"
 )
 
-var newSession = custom_session.GetAWSSession
-var newDynamodb = dynamodb.New
+var (
+	dynamoClient dynamodbiface.DynamoDBAPI = &dynamodb.DynamoDB{}
+	isInitiated  bool                      = false
+)
 
-var _ DynamoDBService = (*DynamoDBClient)(nil)
+func initAwsDynamoDb() {
+	if !isInitiated {
+		dynamoClient := dynamodb.New(session.GetAWSSession())
+		if dynamoClient == nil {
+			panic("failed to create dynamodb")
+		}
+		isInitiated = true
+	}
+}
+
+// var _ DynamoDBService = (*DynamoDBClient)(nil)
 
 type DynamoDBService interface {
 	PutItem(item map[string]interface{}) (*dynamodb.PutItemOutput, error)
@@ -23,15 +36,33 @@ type DynamoDBService interface {
 	DeleteTable() (*dynamodb.DeleteTableOutput, error)
 }
 
-func NewDynamoDBClient(tableName string, keySchemaInput KeySchemaInput, gsiKeySchemaInput []*GsiKeySchemaInput) *DynamoDBClient {
-	session := newSession()
-	client := newDynamodb(session)
+func NewDynamoDBClient(tableName string, keySchemaInput KeySchemaInput, gsiKeySchemaInput []*GsiKeySchemaInput) (*DynamoDBClient, error) {
+	if tableName == "" {
+		return nil, errors.New("table name cannot be empty")
+	}
+	if keySchemaInput.HashKey == "" {
+		return nil, errors.New("hash key in key schema cannot be empty")
+	}
+	for _, gsi := range gsiKeySchemaInput {
+		if gsi.IndexName == "" {
+			return nil, errors.New("GSI index name cannot be empty")
+		}
+		if gsi.HashKey == "" {
+			return nil, errors.New("GSI hash key cannot be empty")
+		}
+		if gsi.ProjectionType != "" {
+			if gsi.ProjectionType != "ALL" && gsi.ProjectionType != "INCLUDE" && gsi.ProjectionType != "KEYS_ONLY" {
+				return nil, errors.New("GSI projection type must be one of ALL, INCLUDE, or KEYS_ONLY")
+			}
+		}
+	}
+
+	initAwsDynamoDb()
 	return &DynamoDBClient{
 		tableName:    tableName,
 		keySchema:    keySchemaInput,
 		gsiKeySchema: gsiKeySchemaInput,
-		client:       client,
-	}
+	}, nil
 }
 
 func findGsiKeySchema(gsiKeySchema []*GsiKeySchemaInput, indexName string) (*GsiKeySchemaInput, error) {

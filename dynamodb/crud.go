@@ -27,7 +27,7 @@ func (d *DynamoDBClient) PutItem(item map[string]interface{}) (*dynamodb.PutItem
 		TableName: aws.String(d.tableName),
 		Item:      av,
 	}
-	return d.client.PutItem(input)
+	return dynamoClient.PutItem(input)
 }
 
 // QueryItem queries items from the DynamoDB table using a secondary index.
@@ -58,7 +58,7 @@ func (d *DynamoDBClient) QueryItem(key map[string]interface{}, indexName string)
 		ExpressionAttributeValues: expressionAttributeValues,
 	}
 
-	return d.client.Query(input)
+	return dynamoClient.Query(input)
 }
 
 // GetItem retrieves an item from the DynamoDB table.
@@ -82,7 +82,7 @@ func (d *DynamoDBClient) GetItem(key map[string]interface{}) (*dynamodb.GetItemO
 		TableName: aws.String(d.tableName),
 		Key:       av,
 	}
-	return d.client.GetItem(input)
+	return dynamoClient.GetItem(input)
 }
 
 // DeleteItem deletes an item from the DynamoDB table.
@@ -106,5 +106,5 @@ func (d *DynamoDBClient) DeleteItem(key map[string]interface{}) (*dynamodb.Delet
 		TableName: aws.String(d.tableName),
 		Key:       av,
 	}
-	return d.client.DeleteItem(input)
+	return dynamoClient.DeleteItem(input)
 }

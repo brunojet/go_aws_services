@@ -1,9 +1,7 @@
 package dynamodb
 
 import (
-	"context"
 	"errors"
-	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
@@ -40,7 +38,7 @@ func (d *DynamoDBClient) CreateTableAsync() (*dynamodb.CreateTableOutput, error)
 		input.GlobalSecondaryIndexes = globalSecondaryIndexes
 	}
 
-	return d.client.CreateTable(input)
+	return dynamoClient.CreateTable(input)
 }
 
 func (d *DynamoDBClient) CreateTable() (*dynamodb.CreateTableOutput, error) {
@@ -49,7 +47,7 @@ func (d *DynamoDBClient) CreateTable() (*dynamodb.CreateTableOutput, error) {
 		return nil, err
 	}
 
-	err = d.client.WaitUntilTableExists(&dynamodb.DescribeTableInput{
+	err = dynamoClient.WaitUntilTableExists(&dynamodb.DescribeTableInput{
 		TableName: aws.String(d.tableName),
 	})
 
@@ -65,7 +63,7 @@ func (d *DynamoDBClient) DeleteTableAsync() (*dynamodb.DeleteTableOutput, error)
 		TableName: aws.String(d.tableName),
 	}
 
-	return d.client.DeleteTable(input)
+	return dynamoClient.DeleteTable(input)
 }
 
 func (d *DynamoDBClient) DeleteTable() (*dynamodb.DeleteTableOutput, error) {
@@ -74,10 +72,7 @@ func (d *DynamoDBClient) DeleteTable() (*dynamodb.DeleteTableOutput, error) {
 		return nil, err
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	err = d.client.WaitUntilTableNotExistsWithContext(ctx, &dynamodb.DescribeTableInput{
+	err = dynamoClient.WaitUntilTableNotExists(&dynamodb.DescribeTableInput{
 		TableName: aws.String(d.tableName),
 	})
 
