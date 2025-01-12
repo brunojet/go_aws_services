@@ -27,52 +27,66 @@ func convertKeySchema(input KeySchemaInput, attributeDefinitions *[]*dynamodb.At
 			KeyType:       aws.String("RANGE"),
 		})
 
-		attributeType := "S"
-		if input.RangeType != "" {
-			attributeType = input.RangeType
-		}
-
-		addAttributeDefinition(attributeDefinitions, attributeMap, input.RangeKey, attributeType)
+		addAttributeDefinition(attributeDefinitions, attributeMap, input.RangeKey, input.RangeType)
 	}
 
 	return keySchema
+}
+
+func addProjection(gsi *dynamodb.GlobalSecondaryIndex, projectionType string, nonKeyAttributes []string) {
+	projection := &dynamodb.Projection{
+		ProjectionType: aws.String(projectionType),
+	}
+
+	if projectionType == "INCLUDE" {
+		projection.NonKeyAttributes = aws.StringSlice(nonKeyAttributes)
+	}
+
+	gsi.Projection = projection
+}
+
+func addProvidedThroughput(gsi *dynamodb.GlobalSecondaryIndex, readCapacityUnits, writeCapacityUnits int64) {
+	gsi.ProvisionedThroughput = &dynamodb.ProvisionedThroughput{
+		ReadCapacityUnits:  aws.Int64(readCapacityUnits),
+		WriteCapacityUnits: aws.Int64(writeCapacityUnits),
+	}
+}
+
+func createGSI(input *GsiKeySchemaInput, attributeDefinitions *[]*dynamodb.AttributeDefinition, attributeMap map[string]bool) *dynamodb.GlobalSecondaryIndex {
+	keySchema := convertKeySchema(input.KeySchemaInput, attributeDefinitions, attributeMap)
+
+	gsi := &dynamodb.GlobalSecondaryIndex{
+		IndexName: aws.String(input.IndexName),
+		KeySchema: keySchema,
+	}
+
+	addProjection(gsi, input.ProjectionType, input.NonKeyAttributes)
+	addProvidedThroughput(gsi, input.ReadCapacityUnits, input.WriteCapacityUnits)
+
+	return gsi
 }
 
 func convertGSI(inputs []*GsiKeySchemaInput, attributeDefinitions *[]*dynamodb.AttributeDefinition, attributeMap map[string]bool) []*dynamodb.GlobalSecondaryIndex {
 	var gsis []*dynamodb.GlobalSecondaryIndex
 
 	for _, input := range inputs {
-		keySchema := convertKeySchema(input.KeySchemaInput, attributeDefinitions, attributeMap)
-
-		projection := &dynamodb.Projection{
-			ProjectionType: aws.String(input.ProjectionType),
-		}
-
-		if len(input.NonKeyAttributes) > 0 {
-			projection.NonKeyAttributes = aws.StringSlice(input.NonKeyAttributes)
-		}
-
-		gsi := &dynamodb.GlobalSecondaryIndex{
-			IndexName:  aws.String(input.IndexName),
-			KeySchema:  keySchema,
-			Projection: projection,
-			ProvisionedThroughput: &dynamodb.ProvisionedThroughput{
-				ReadCapacityUnits:  aws.Int64(input.ReadCapacityUnits),
-				WriteCapacityUnits: aws.Int64(input.WriteCapacityUnits),
-			},
-		}
-
+		gsi := createGSI(input, attributeDefinitions, attributeMap)
 		gsis = append(gsis, gsi)
 	}
 
 	return gsis
 }
 
-func addAttributeDefinition(attributeDefinitions *[]*dynamodb.AttributeDefinition, attributeMap map[string]bool, attributeName, attributeType string) {
+func addAttributeDefinition(attributeDefinitions *[]*dynamodb.AttributeDefinition, attributeMap map[string]bool, attributeName string, attributeType string) {
 	if attributeMap[attributeName] {
 		return
 	}
 	attributeMap[attributeName] = true
+
+	if attributeType == "" {
+		attributeType = "S"
+	}
+
 	*attributeDefinitions = append(*attributeDefinitions, &dynamodb.AttributeDefinition{
 		AttributeName: aws.String(attributeName),
 		AttributeType: aws.String(attributeType),
